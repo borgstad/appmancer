@@ -1,0 +1,20 @@
+[package]
+name = "appmancer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest = { version = "0.11", features = ["blocking", "json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+clap = { version = "4.1.8", features = ["derive"] }
+tokio = { version = "1.26", features = ["full"] }
+log4rs = "1.2.0"
+log = "0.4.20"
+colored = "2.0.4"
+rustyline = "12.0.0"
+include_dir = "0.7.3"
+walkdir = "2.4.0"
+handlebars = "4.4.0"
