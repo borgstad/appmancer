@@ -71,12 +71,11 @@ async fn main() {
     rl.save_history("history.txt").unwrap();
 
     loop {
-        let readline = rl.readline("User: ");
-        let mut input = "".to_string();
+        let readline = rl.readline("User: ").unwrap();
         let role = "user".to_string();
 
         let result = agent_developer
-            .chat(&input, &role)
+            .chat(&readline, &role)
             .await
             .expect("Request error");
         println!("{}: {}", "Agent: ".green(), result.bold());
