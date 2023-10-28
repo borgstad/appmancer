@@ -1,4 +1,4 @@
-use clap::{command, Parser, Subcommand};
+
 use serde_json::json;
 use std::io;
 use std::path::Path;
@@ -6,9 +6,9 @@ use walkdir::{DirEntry, WalkDir};
 mod libs;
 use colored::Colorize;
 use include_dir::{include_dir, Dir};
-use libs::api_client::{Agent, ResponseChat};
-use rustyline::error::ReadlineError;
-use rustyline::{history, DefaultEditor};
+use libs::api_client::{Agent};
+
+use rustyline::{DefaultEditor};
 use std::io::prelude::*;
 use std::process;
 
@@ -42,7 +42,7 @@ async fn main() {
         .readline("Please enter the path to you project: ")
         .unwrap();
     let mut project_path = Path::new(&readline);
-    let mut files_in_project: String = "".to_string();
+    let files_in_project: String = "".to_string();
     if project_path.exists() {
         project_path = Path::new(&readline);
         let f = list_files_with_exclusions(
@@ -50,11 +50,11 @@ async fn main() {
             vec![".git", "target", ".gitignore", "Cargo.lock"],
         )
         .unwrap();
-        if f.len() == 0 {
-            let files_in_project = "The project currently have no files".to_string();
+        if f.is_empty() {
+            let _files_in_project = "The project currently have no files".to_string();
         } else {
             let files_in_project = "The project currently have the following files:\n".to_string();
-            let files_in_project = files_in_project + &f.join("\n");
+            let _files_in_project = files_in_project + &f.join("\n");
         }
     } else {
         println!("Project does not exist, exiting");

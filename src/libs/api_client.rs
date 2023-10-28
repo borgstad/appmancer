@@ -1,4 +1,4 @@
-use log::{debug, error, info, trace, warn};
+
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -53,12 +53,12 @@ pub struct Messages {
 }
 impl fmt::Display for Messages {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "\n")?;
+        writeln!(f)?;
         for msg in &self.conversation {
-            write!(f, "{}: {}", msg.role, msg.content.replace("\n", ""))?;
-            write!(f, "\n");
+            write!(f, "{}: {}", msg.role, msg.content.replace('\n', ""))?;
+            writeln!(f);
         }
-        write!(f, "\n")
+        writeln!(f)
     }
 }
 
@@ -75,7 +75,7 @@ impl Agent {
             model,
             max_tokens: Some(1000),
             client: reqwest::Client::new(),
-            messages: messages,
+            messages,
         }
     }
 
@@ -109,7 +109,7 @@ impl Agent {
             content: agent_content.clone(),
         };
         self.messages.conversation.push(agent_msg);
-        return Ok(agent_content.clone());
+        Ok(agent_content.clone())
     }
 
     async fn send_request(&self, role: &String, msgs: &Messages) -> Result<String, reqwest::Error> {
@@ -135,6 +135,6 @@ impl Agent {
             .expect("Request error");
         let agent_response: ResponseChat = response.json().await.expect("JSON error");
         let agent_content = agent_response.choices[0].message.content.clone();
-        return Ok(agent_content);
+        Ok(agent_content)
     }
 }

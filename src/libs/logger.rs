@@ -1,4 +1,4 @@
-use colored::Colorize;
+
 use log4rs;
 use std::fs::OpenOptions;
 use std::io::Write;
