@@ -109,7 +109,6 @@ impl Agent {
             content: agent_content.clone(),
         };
         self.messages.conversation.push(agent_msg);
-        // println!("{}", self.messages);
         return Ok(agent_content.clone());
     }
 
