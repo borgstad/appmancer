@@ -1,4 +1,3 @@
-
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -79,31 +78,15 @@ impl Agent {
         }
     }
 
-    fn get_msgs_as_json(&self) -> Vec<serde_json::Value> {
-        self.messages
-            .conversation
-            .iter()
-            .map(|msg| {
-                json!({
-                    "role": msg.role.clone(),
-                    "content": msg.content.clone(),
-                })
-            })
-            .collect()
-    }
-
-    pub async fn chat(
-        &mut self,
-        message: &String,
-        role: &String,
-    ) -> Result<String, reqwest::Error> {
+    pub async fn chat(&mut self, message: &String) -> Result<String, reqwest::Error> {
+        let role = "user".to_string();
         let msg = Message {
             role: role.clone(),
             content: message.clone(),
         };
         self.messages.conversation.push(msg);
 
-        let agent_content = self.send_request(role, &self.messages).await.unwrap();
+        let agent_content = self.send_request(&role, &self.messages).await.unwrap();
         let agent_msg = Message {
             role: "assistant".to_string(),
             content: agent_content.clone(),
