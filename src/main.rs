@@ -16,16 +16,14 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Generate code as diffs
-    Dev {
-        /// Where is the file
+    /// Ideas for recfactoring code
+    Refactor {
+        /// File location
         file_path: PathBuf,
-        // What should be done on the file
-        // text: String,
     },
     /// Generate bash code
     Sh {
-        /// What code should be generated
+        /// Description of bash code
         text: String,
     },
 }
@@ -46,7 +44,7 @@ async fn main() {
     let mut agent = Agent::new(config.token, config.model);
 
     match &cli.command {
-        Commands::Dev { file_path } => {
+        Commands::Refactor { file_path } => {
             // Handle the 'dev' subcommand, working with the provided file path
             develop(&mut agent, file_path).await;
             // Here you would call a function that handles the 'dev' command logic
