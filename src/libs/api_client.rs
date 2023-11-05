@@ -62,20 +62,24 @@ impl fmt::Display for Messages {
 }
 
 impl Agent {
-    pub fn new(token: String, model: String, system_instruction: &str) -> Agent {
-        let messages = Messages {
-            conversation: vec![Message {
-                role: "system".to_string(),
-                content: system_instruction.to_string(),
-            }],
-        };
+    pub fn new(token: String, model: String) -> Agent {
         Agent {
             token,
             model,
             max_tokens: Some(1000),
             client: reqwest::Client::new(),
-            messages,
+            messages: Messages {
+                conversation: vec![],
+            },
         }
+    }
+
+    pub fn set_system(&mut self, prompt: &str) {
+        let message = Message {
+            role: "system".to_string(),
+            content: prompt.to_string(),
+        };
+        self.messages.conversation.push(message);
     }
 
     pub async fn chat(&mut self, message: &str) -> Result<String, reqwest::Error> {
