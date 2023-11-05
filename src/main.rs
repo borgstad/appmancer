@@ -1,117 +1,99 @@
-use clap::{command, Parser, Subcommand};
-use serde_json::json;
-use std::io;
-use std::path::Path;
-use walkdir::{DirEntry, WalkDir};
-mod libs;
-use colored::Colorize;
-use include_dir::{include_dir, Dir};
-use libs::api_client::{Agent, ResponseChat};
-use rustyline::error::ReadlineError;
-use rustyline::{history, DefaultEditor};
-use std::io::prelude::*;
-use std::process;
+use clap::{Parser, Subcommand};
+use std::io::{self, Write};
+use std::path::PathBuf;
+use std::process::{self, Command};
 
-static SYSTEMS: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/resources");
+mod libs;
+use libs::api_client::Agent;
+
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Ideas for recfactoring code
+    Refactor {
+        /// File location
+        file_path: PathBuf,
+    },
+    /// Generate bash code
+    Sh {
+        /// Description of bash code
+        text: String,
+    },
+}
+
+const TERMINAL: &str = include_str!("../resources/terminal-helper.txt");
+const DEVELOPER: &str = include_str!("../resources/developer.txt");
 
 #[tokio::main]
 async fn main() {
-    libs::logger::init();
-    let user_conf = libs::config::load_config();
-
-    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    std::io::stdout().flush().unwrap();
-
-    let developer_files_in_project = SYSTEMS
-        .get_file("developer.txt")
-        .unwrap()
-        .contents_utf8()
-        .unwrap();
-    let mut rl = DefaultEditor::with_config(
-        rustyline::Config::builder()
-            .auto_add_history(true)
-            .completion_type(rustyline::CompletionType::List)
-            .max_history_size(10000)
-            .unwrap()
-            .build(),
-    )
-    .unwrap();
-    rl.load_history("history.txt").unwrap();
-
-    let readline = rl
-        .readline("Please enter the path to you project: ")
-        .unwrap();
-    let mut project_path = Path::new(&readline);
-    let mut files_in_project: String = "".to_string();
-    if project_path.exists() {
-        project_path = Path::new(&readline);
-        let f = list_files_with_exclusions(
-            project_path,
-            vec![".git", "target", ".gitignore", "Cargo.lock"],
-        )
-        .unwrap();
-        if f.len() == 0 {
-            let files_in_project = "The project currently have no files".to_string();
-        } else {
-            let files_in_project = "The project currently have the following files:\n".to_string();
-            let files_in_project = files_in_project + &f.join("\n");
+    let config = match libs::config::Config::new() {
+        Ok(config) => config,
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            return;
         }
-    } else {
-        println!("Project does not exist, exiting");
-        process::exit(0);
-    }
+    };
+    let cli = Cli::parse();
+    let mut agent = Agent::new(config.token, config.model);
 
-    let mut reg = handlebars::Handlebars::new();
-    reg.register_template_string("system_developer", developer_files_in_project);
-    let system_developer = reg
-        .render("system_developer", &json!({"files": files_in_project}))
-        .unwrap();
-
-    let mut agent_developer = Agent::new(user_conf.token, user_conf.model, &system_developer);
-    rl.save_history("history.txt").unwrap();
-
-    loop {
-        let readline = rl.readline("User: ");
-        let mut input = "".to_string();
-        let role = "user".to_string();
-
-        let result = agent_developer
-            .chat(&input, &role)
-            .await
-            .expect("Request error");
-        println!("{}: {}", "Agent: ".green(), result.bold());
-        rl.save_history("history.txt").unwrap();
+    match &cli.command {
+        Commands::Refactor { file_path } => {
+            // Handle the 'dev' subcommand, working with the provided file path
+            develop(&mut agent, file_path).await;
+            // Here you would call a function that handles the 'dev' command logic
+        }
+        Commands::Sh { text } => {
+            terminal_corrector(&mut agent, text).await;
+        }
     }
 }
 
-fn is_excluded(entry: &DirEntry, exclude_paths: &[&str]) -> bool {
-    exclude_paths
-        .iter()
-        .any(|&exclude_path| entry.path().to_string_lossy().contains(exclude_path))
+async fn terminal_corrector(agent: &mut Agent, text: &str) {
+    agent.set_system(TERMINAL);
+    match agent.chat(text).await {
+        Ok(response) => {
+            let bash_command = response.replace("```", "").trim().to_string();
+            println!("{}", bash_command);
+            print!("Would you like to execute this command? (y/n): ");
+            io::stdout().flush().expect("Failed to flush stdout");
+
+            let mut user_input = String::new();
+            io::stdin()
+                .read_line(&mut user_input)
+                .expect("Failed to read line");
+
+            if ["y", "yes"].contains(&user_input.trim().to_lowercase().as_str()) {
+                match Command::new("sh").arg("-c").arg(&bash_command).status() {
+                    Ok(_) => {}
+                    Err(e) => eprintln!("Failed to execute command: {}", e),
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            process::exit(1);
+        }
+    }
 }
 
-fn list_files_with_exclusions<P: AsRef<Path>>(
-    path: P,
-    exclude_paths: Vec<&str>,
-) -> io::Result<Vec<String>> {
-    let mut files = Vec::new();
-
-    for entry in WalkDir::new(path)
-        .into_iter()
-        .filter_map(|e| e.ok()) // Ensure we're using walkdir's Result type here
-        .filter(|e| e.file_type().is_file() && !is_excluded(e, &exclude_paths))
-    {
-        files.push(
-            entry
-                .path()
-                .to_str()
-                .ok_or(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Path conversion error",
-                ))?
-                .to_string(),
-        );
+async fn develop(agent: &mut Agent, path: &PathBuf) {
+    agent.set_system(DEVELOPER);
+    let code = std::fs::read_to_string(path).expect("Something went wrong reading the file");
+    let chat_text = code;
+    match agent.chat(&chat_text).await {
+        Ok(response) => {
+            println!("{}", response);
+        }
+        Err(e) => {
+            println!("hello");
+            eprintln!("Error: {}", e);
+            process::exit(1);
+        }
     }
-
-    Ok(files)
 }
