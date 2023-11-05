@@ -15,13 +15,20 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Generate code as diffs
+    Dev {
+        /// Where is the file
+        file_path: PathBuf,
+        /// What should be done on the file
+        text: String,
+    },
+    /// Generate bash code
     Sh {
-        // Add specific arguments for the `sh` subcommand if needed
+        /// What code should be generated
         text: String,
     },
 }
 
-// const TERMINAL: &str = include_str!("../resources/terminal-corrector.txt");
 const TERMINAL: &str = include_str!("../resources/terminal-helper.txt");
 const DEVELOPER: &str = include_str!("../resources/developer.txt");
 
@@ -30,6 +37,11 @@ async fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
+        Commands::Dev { text, file_path } => {
+            // Handle the 'dev' subcommand, working with the provided file path
+            develop(text, file_path).await;
+            // Here you would call a function that handles the 'dev' command logic
+        }
         Commands::Sh { text } => {
             terminal_corrector(&text).await;
         }
@@ -61,6 +73,32 @@ async fn terminal_corrector(text: &str) {
             }
         }
         Err(e) => {
+            eprintln!("Error: {}", e);
+            process::exit(1);
+        }
+    }
+}
+
+async fn develop(text: &str, path: &PathBuf) {
+    let config = libs::config::load_config(); // Assuming this does not fail.
+    let mut agent = libs::api_client::Agent::new(config.token, config.model, DEVELOPER);
+
+    let code = std::fs::read_to_string(path).expect("Something went wrong reading the file");
+    let changes = format!(
+        "IMPORTANT: make the diff changes to this file: {}",
+        path.display()
+    );
+    let chat_text = format!("{}\n{}\n```rust\n{}\n```", text, changes, code);
+    println!("{}", chat_text);
+
+    // The following assumes agent.chat returns a Result type.
+    match agent.chat(&chat_text).await {
+        Ok(response) => {
+            // let bash_command = response.replace("```", "").trim().to_string();
+            println!("{}", response);
+        }
+        Err(e) => {
+            println!("hello");
             eprintln!("Error: {}", e);
             process::exit(1);
         }
