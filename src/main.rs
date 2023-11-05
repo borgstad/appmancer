@@ -19,8 +19,8 @@ enum Commands {
     Dev {
         /// Where is the file
         file_path: PathBuf,
-        /// What should be done on the file
-        text: String,
+        // What should be done on the file
+        // text: String,
     },
     /// Generate bash code
     Sh {
@@ -37,9 +37,9 @@ async fn main() {
     let cli = Cli::parse();
 
     match &cli.command {
-        Commands::Dev { text, file_path } => {
+        Commands::Dev { file_path } => {
             // Handle the 'dev' subcommand, working with the provided file path
-            develop(text, file_path).await;
+            develop(file_path).await;
             // Here you would call a function that handles the 'dev' command logic
         }
         Commands::Sh { text } => {
@@ -79,7 +79,7 @@ async fn terminal_corrector(text: &str) {
     }
 }
 
-async fn develop(text: &str, path: &PathBuf) {
+async fn develop(path: &PathBuf) {
     let config = libs::config::load_config(); // Assuming this does not fail.
     let mut agent = libs::api_client::Agent::new(config.token, config.model, DEVELOPER);
 
@@ -88,8 +88,9 @@ async fn develop(text: &str, path: &PathBuf) {
         "IMPORTANT: make the diff changes to this file: {}",
         path.display()
     );
-    let chat_text = format!("{}\n{}\n```rust\n{}\n```", text, changes, code);
-    println!("{}", chat_text);
+    // let chat_text = format!("{}\n{}\n```rust\n{}\n```", text, changes, code);
+    let chat_text = code;
+    // println!("{}", chat_text);
 
     // The following assumes agent.chat returns a Result type.
     match agent.chat(&chat_text).await {
