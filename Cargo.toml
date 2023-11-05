@@ -9,7 +9,7 @@ edition = "2021"
 reqwest = { version = "0.11", features = ["blocking", "json"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-clap = { version = "4.1.8", features = ["derive"] }
+clap = { version = "4.3.0", features = ["derive", "string"] }
 tokio = { version = "1.26", features = ["full"] }
 log4rs = "1.2.0"
 log = "0.4.20"

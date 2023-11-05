@@ -62,11 +62,11 @@ impl fmt::Display for Messages {
 }
 
 impl Agent {
-    pub fn new(token: String, model: String, system_instruction: &String) -> Agent {
+    pub fn new(token: String, model: String, system_instruction: &str) -> Agent {
         let messages = Messages {
             conversation: vec![Message {
                 role: "system".to_string(),
-                content: system_instruction.clone(),
+                content: system_instruction.to_string(),
             }],
         };
         Agent {
@@ -78,11 +78,11 @@ impl Agent {
         }
     }
 
-    pub async fn chat(&mut self, message: &String) -> Result<String, reqwest::Error> {
+    pub async fn chat(&mut self, message: &str) -> Result<String, reqwest::Error> {
         let role = "user".to_string();
         let msg = Message {
             role: role.clone(),
-            content: message.clone(),
+            content: message.to_string(),
         };
         self.messages.conversation.push(msg);
 
