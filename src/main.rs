@@ -2,7 +2,6 @@ use clap::{Parser, Subcommand};
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::process::{self, Command};
-use tokio::main;
 
 mod libs;
 use libs::api_client::Agent;
@@ -50,7 +49,7 @@ async fn main() {
             // Here you would call a function that handles the 'dev' command logic
         }
         Commands::Sh { text } => {
-            terminal_corrector(&mut agent, &text).await;
+            terminal_corrector(&mut agent, text).await;
         }
     }
 }

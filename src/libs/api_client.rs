@@ -55,7 +55,6 @@ impl fmt::Display for Messages {
         writeln!(f)?;
         for msg in &self.conversation {
             write!(f, "{}: {}", msg.role, msg.content.replace('\n', ""))?;
-            writeln!(f);
         }
         writeln!(f)
     }
