@@ -1,0 +1,33 @@
+name: Rust Release CI
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+          source $HOME/.cargo/env
+      - name: Build Release Binary
+        run: |
+          source $HOME/.cargo/env
+          cargo build --release --verbose
+      - name: Upload Release Binary
+        uses: actions/upload-artifact@v2
+        with:
+          name: appmancer-${{ runner.os }}-${{ github.event.release.tag_name }}
+          path: target/release/appmancer
+      - name: Attach binaries to release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            target/release/appmancer
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
