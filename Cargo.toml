@@ -11,10 +11,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 clap = { version = "4.3.0", features = ["derive", "string"] }
 tokio = { version = "1.26", features = ["full"] }
-log4rs = "1.2.0"
 log = "0.4.20"
 colored = "2.0.4"
-rustyline = "12.0.0"
-include_dir = "0.7.3"
-walkdir = "2.4.0"
-handlebars = "4.4.0"
+crossterm = "0.27.0"
+tempfile = "3.8.1"
