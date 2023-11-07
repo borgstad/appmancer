@@ -4,6 +4,7 @@ use std::env;
 pub struct Config {
     pub token: String,
     pub model: String,
+    pub editor: String,
 }
 
 impl Config {
@@ -11,9 +12,14 @@ impl Config {
         let token = env::var("OPENAI_API_KEY")
             .map_err(|_| "The OPENAI_API_KEY environment variable is not set.".to_string())?;
 
+        let editor = env::var("EDITOR").unwrap_or_else(|_| "vi".to_string());
         let model =
             env::var("OPENAI_DEFAULT_MODEL").unwrap_or_else(|_| "gpt-3.5-turbo".to_string());
 
-        Ok(Self { token, model })
+        Ok(Self {
+            token,
+            model,
+            editor,
+        })
     }
 }
