@@ -26,13 +26,25 @@ enum Commands {
         /// File location
         file_path: PathBuf,
     },
-    Git {},
-
+    Git(GitOpts),
     /// Generate bash code
     Sh {
         /// Description of bash code
         text: String,
     },
+}
+
+#[derive(Parser)]
+struct GitOpts {
+    /// Create a commit message based on staged changes
+    #[clap(long)]
+    staged: bool,
+}
+
+#[derive(Subcommand)]
+enum GitAction {
+    /// Create a commit message based on staged changes
+    Staged,
 }
 
 const TERMINAL: &str = include_str!("../resources/terminal-helper.txt");
@@ -60,7 +72,9 @@ async fn main() {
         Commands::Sh { text } => {
             terminal_corrector(&mut agent, text, &config.editor).await;
         }
-        Commands::Git {} => git_info_to_agent(&mut agent, &config.editor).await,
+        Commands::Git(git_opts) => {
+            git_info_to_agent(&mut agent, &config.editor, git_opts.staged).await;
+        }
     }
 }
 
@@ -118,11 +132,11 @@ async fn terminal_corrector(agent: &mut Agent, text: &str, editor: &str) {
     }
 }
 
-async fn git_info_to_agent(agent: &mut Agent, editor: &str) {
+async fn git_info_to_agent(agent: &mut Agent, editor: &str, is_staged: bool) {
     agent.set_system(GIT);
 
     let git_log = get_git_log().unwrap_or_else(|_| "No recent commits".to_string());
-    let git_diff = get_git_diff().unwrap_or_else(|_| "No changes".to_string());
+    let git_diff = get_git_diff(is_staged).unwrap_or_else(|_| "No changes".to_string());
 
     let input_text = format!("{}\n\n{}", git_diff, git_log);
     // println!("{}", input_text);
@@ -202,8 +216,13 @@ async fn develop(agent: &mut Agent, path: &PathBuf) {
     }
 }
 
-fn get_git_diff() -> Result<String, std::io::Error> {
-    let output = Command::new("git").arg("diff").output()?;
+fn get_git_diff(is_staged: bool) -> Result<String, std::io::Error> {
+    let args = if is_staged {
+        vec!["diff", "--staged"]
+    } else {
+        vec!["diff"]
+    };
+    let output = Command::new("git").args(args).output()?;
 
     if !output.status.success() {
         return Err(std::io::Error::new(
