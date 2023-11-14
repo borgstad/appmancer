@@ -26,6 +26,8 @@ enum Commands {
         /// File location
         file_path: PathBuf,
     },
+    Git {},
+
     /// Generate bash code
     Sh {
         /// Description of bash code
@@ -35,6 +37,7 @@ enum Commands {
 
 const TERMINAL: &str = include_str!("../resources/terminal-helper.txt");
 const DEVELOPER: &str = include_str!("../resources/developer.txt");
+const GIT: &str = include_str!("../resources/git.txt");
 
 #[tokio::main]
 async fn main() {
@@ -57,12 +60,74 @@ async fn main() {
         Commands::Sh { text } => {
             terminal_corrector(&mut agent, text, &config.editor).await;
         }
+        Commands::Git {} => git_info_to_agent(&mut agent, &config.editor).await,
     }
 }
 
 async fn terminal_corrector(agent: &mut Agent, text: &str, editor: &str) {
     agent.set_system(TERMINAL);
     match agent.chat(text).await {
+        Ok(response) => {
+            let bash_command = response.replace("```", "").trim().to_string();
+            println!("{}", bash_command);
+            println!("Would you like to execute this command? [y/n/m]");
+
+            enable_raw_mode().expect("Failed to enable raw mode");
+            let mut command_executed = false;
+
+            while !command_executed {
+                if let Event::Key(key_event) = read().expect("Failed to read event") {
+                    match key_event.code {
+                        KeyCode::Char('y') => {
+                            disable_raw_mode().expect("Failed to disable raw mode");
+                            execute_command(&bash_command);
+                            command_executed = true;
+                        }
+                        KeyCode::Char('n') => {
+                            disable_raw_mode().expect("Failed to disable raw mode");
+                            command_executed = true;
+                        }
+                        KeyCode::Char('m') => {
+                            disable_raw_mode().expect("Failed to disable raw mode");
+                            let mut file =
+                                tempfile::NamedTempFile::new().expect("Failed to create temp file");
+                            writeln!(file, "{}", bash_command)
+                                .expect("Failed to write to temp file");
+
+                            Command::new(editor)
+                                .arg(file.path())
+                                .status()
+                                .expect("Failed to start editor");
+                            let modified_command = std::fs::read_to_string(file.path())
+                                .expect("Failed to read temp file");
+                            println!("{}", modified_command);
+                            execute_command(&modified_command);
+                            command_executed = true;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            disable_raw_mode().expect("Failed to disable raw mode");
+        }
+        Err(e) => {
+            disable_raw_mode().expect("Failed to disable raw mode");
+            eprintln!("Error: {}", e);
+            process::exit(1);
+        }
+    }
+}
+
+async fn git_info_to_agent(agent: &mut Agent, editor: &str) {
+    agent.set_system(GIT);
+
+    let git_log = get_git_log().unwrap_or_else(|_| "No recent commits".to_string());
+    let git_diff = get_git_diff().unwrap_or_else(|_| "No changes".to_string());
+
+    let input_text = format!("{}\n\n{}", git_diff, git_log);
+    // println!("{}", input_text);
+    // return;
+    match agent.chat(&input_text).await {
         Ok(response) => {
             let bash_command = response.replace("```", "").trim().to_string();
             println!("{}", bash_command);
@@ -135,4 +200,32 @@ async fn develop(agent: &mut Agent, path: &PathBuf) {
             process::exit(1);
         }
     }
+}
+
+fn get_git_diff() -> Result<String, std::io::Error> {
+    let output = Command::new("git").arg("diff").output()?;
+
+    if !output.status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Failed to get git diff",
+        ));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
+fn get_git_log() -> Result<String, std::io::Error> {
+    let output = Command::new("git")
+        .args(&["log", "-n", "10", "--pretty=format:%h - %an, %ar : %s"])
+        .output()?;
+
+    if !output.status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Failed to get git log",
+        ));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
