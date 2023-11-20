@@ -5,7 +5,7 @@
 Appmancer is a command-line interface (CLI) tool designed to enhance the developer's workflow by providing code refactoring suggestions and generating bash commands. It integrates with an AI backend, harnessing the power of machine learning models to analyze and process code efficiently.
 ## Features
 * Bash Command Synthesis: Input a description of the task you want to perform in bash, and Appmancer will generate the corresponding command.
-* Refactoring Guidance: Supply the path to a source code file and receive intelligent refactoring tips. Note that content content is written as terminal output.
+* Git commit message: Create a semantic commit git message based on diff (`--staged` flag supported), and last 10 git commit messages.
 
 ## Installation
 Ensure you have Rust and Cargo installed on your machine to get started with Appmancer.
@@ -22,7 +22,10 @@ Execute Appmancer using the following commands:
 ```
 ./appmancer sh "describe your bash task"
 
-./appmancer refactor "path/to/your/source_code_file"
+./appmancer git
+
+# Or if files have been staged via `git add`:
+./appmancer git --staged
 ```
 
 Configuration
