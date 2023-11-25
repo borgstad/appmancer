@@ -79,7 +79,29 @@ async fn main() {
 }
 
 async fn terminal_corrector(agent: &mut Agent, text: &str, editor: &str) {
-    handle_agent_interaction(agent, text, editor, TERMINAL).await;
+    agent.set_system(TERMINAL);
+    match agent.chat(text).await {
+        Ok(mut bash_command) => {
+            // replace ``` with nothing
+            bash_command = bash_command.replace("```bash\n", "");
+            bash_command = bash_command.replace("```\n", "");
+            bash_command = bash_command.replace("```", "");
+            bash_command = if bash_command.starts_with("bash") {
+                bash_command
+                    .lines()
+                    .skip(1)
+                    .collect::<Vec<&str>>()
+                    .join("\n")
+            } else {
+                bash_command
+            };
+            handle_agent_interaction(&bash_command, editor);
+        }
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            process::exit(1);
+        }
+    }
 }
 
 async fn git_info_to_agent(agent: &mut Agent, editor: &str, is_staged: bool) {
@@ -87,11 +109,18 @@ async fn git_info_to_agent(agent: &mut Agent, editor: &str, is_staged: bool) {
     let git_diff = get_git_diff(is_staged).unwrap_or_else(|_| "No changes".to_string());
 
     let input_text = format!("{}\n\n{}", git_diff, git_log);
-    handle_agent_interaction(agent, &input_text, editor, GIT).await;
+    agent.set_system(GIT);
+    match agent.chat(&input_text).await {
+        Ok(resonse) => {
+            println!("{}", resonse);
+            handle_agent_interaction(&input_text, editor);
+        }
+        Error => {}
+    }
 }
 
 fn execute_command(command: &str) {
-    match Command::new("sh").arg("-c").arg(command).status() {
+    match Command::new("bash").arg("-c").arg(command).status() {
         Ok(_) => {}
         Err(e) => eprintln!("Failed to execute command: {}", e),
     }
@@ -146,56 +175,44 @@ fn get_git_log() -> Result<String, std::io::Error> {
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
 }
 
-async fn handle_agent_interaction(agent: &mut Agent, input: &str, editor: &str, system: &str) {
-    agent.set_system(system);
-    match agent.chat(input).await {
-        Ok(response) => {
-            let bash_command = response.replace("```", "").trim().to_string();
-            println!("{}", bash_command);
-            println!("Would you like to execute this command? [y/n/m]");
+fn handle_agent_interaction(input: &str, editor: &str) {
+    println!("{}\n", input);
+    println!("Would you like to execute this command? [y/n/m]");
 
-            enable_raw_mode().expect("Failed to enable raw mode");
-            let mut command_executed = false;
+    enable_raw_mode().expect("Failed to enable raw mode");
+    let mut command_executed = false;
 
-            while !command_executed {
-                if let Event::Key(key_event) = read().expect("Failed to read event") {
-                    match key_event.code {
-                        KeyCode::Char('y') => {
-                            disable_raw_mode().expect("Failed to disable raw mode");
-                            execute_command(&bash_command);
-                            command_executed = true;
-                        }
-                        KeyCode::Char('n') => {
-                            disable_raw_mode().expect("Failed to disable raw mode");
-                            command_executed = true;
-                        }
-                        KeyCode::Char('m') => {
-                            disable_raw_mode().expect("Failed to disable raw mode");
-                            let mut file =
-                                tempfile::NamedTempFile::new().expect("Failed to create temp file");
-                            writeln!(file, "{}", bash_command)
-                                .expect("Failed to write to temp file");
-
-                            Command::new(editor)
-                                .arg(file.path())
-                                .status()
-                                .expect("Failed to start editor");
-                            let modified_command = std::fs::read_to_string(file.path())
-                                .expect("Failed to read temp file");
-                            println!("{}", modified_command);
-                            execute_command(&modified_command);
-                            command_executed = true;
-                        }
-                        _ => {}
-                    }
+    while !command_executed {
+        if let Event::Key(key_event) = read().expect("Failed to read event") {
+            match key_event.code {
+                KeyCode::Char('y') => {
+                    disable_raw_mode().expect("Failed to disable raw mode");
+                    execute_command(&input);
+                    command_executed = true;
                 }
+                KeyCode::Char('n') => {
+                    disable_raw_mode().expect("Failed to disable raw mode");
+                    command_executed = true;
+                }
+                KeyCode::Char('m') => {
+                    disable_raw_mode().expect("Failed to disable raw mode");
+                    let mut file =
+                        tempfile::NamedTempFile::new().expect("Failed to create temp file");
+                    writeln!(file, "{}", input).expect("Failed to write to temp file");
+
+                    Command::new(editor)
+                        .arg(file.path())
+                        .status()
+                        .expect("Failed to start editor");
+                    let modified_command =
+                        std::fs::read_to_string(file.path()).expect("Failed to read temp file");
+                    println!("{}", modified_command);
+                    execute_command(&modified_command);
+                    command_executed = true;
+                }
+                _ => {}
             }
-            disable_raw_mode().expect("Failed to disable raw mode");
         }
-        Err(e) => {
-            disable_raw_mode().expect("Failed to disable raw mode");
-            eprintln!("Error: {}", e);
-            process::exit(1);
-        }
+        disable_raw_mode().expect("Failed to disable raw mode");
     }
 }
