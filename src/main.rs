@@ -111,9 +111,8 @@ async fn git_info_to_agent(agent: &mut Agent, editor: &str, is_staged: bool) {
     let input_text = format!("{}\n\n{}", git_diff, git_log);
     agent.set_system(GIT);
     match agent.chat(&input_text).await {
-        Ok(resonse) => {
-            println!("{}", resonse);
-            handle_agent_interaction(&input_text, editor);
+        Ok(response) => {
+            handle_agent_interaction(&response, editor);
         }
         Error => {}
     }
