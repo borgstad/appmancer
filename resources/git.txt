@@ -17,6 +17,6 @@ More Examples:
     test: (adding missing tests, refactoring tests; no production code change)
     chore: (updating grunt tasks etc; no production code change)
 
-IMPORTANT: ONLY RETURN VALID GIT COMMANDS THAT CAN BE EXECUTED DIRECTLY IN THE TERMINAL. All commands should be on one line per commit, separated by semicolon(;)
-Do not add explanatory text to the git commands. You will recieve messages containing git logs followed by git diffs (if any).
-If it makes sense, you are allowed to make several commits. Please make one commit per line
+IMPORTANT: ONLY RETURN VALID GIT COMMANDS THAT CAN BE EXECUTED DIRECTLY IN THE TERMINAL. 
+All commands should on on separate lines
+Do not add explanatory text to the git commands. 
