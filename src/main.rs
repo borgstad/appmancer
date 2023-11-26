@@ -108,10 +108,21 @@ async fn git_info_to_agent(agent: &mut Agent, editor: &str, is_staged: bool) {
     let git_log = get_git_log().unwrap_or_else(|_| "No recent commits".to_string());
     let git_diff = get_git_diff(is_staged).unwrap_or_else(|_| "No changes".to_string());
 
-    let input_text = format!("{}\n\n{}", git_diff, git_log);
+    let mut input_text = format!(
+        "git diff here:\n{}\n\nthis is git logs of the last 10 commits:\n{}",
+        git_diff, git_log
+    );
+    if is_staged {
+        input_text.insert_str(
+            0,
+            "Assume that the diffs are staged, and write a single commit message\n",
+        )
+    }
     agent.set_system(GIT);
     match agent.chat(&input_text).await {
-        Ok(response) => {
+        Ok(mut response) => {
+            response = response.replace("```sh\n", "");
+            response = response.replace("```", "");
             handle_agent_interaction(&response, editor);
         }
         Error => {}
