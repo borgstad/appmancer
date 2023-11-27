@@ -1,5 +1,6 @@
 # Appmancer
 
+![](appmancer-sh.gif)
 Appmancer is a command-line interface (CLI) tool designed to enhance the developer's workflow by providing code refactoring suggestions and generating bash commands. It integrates with an AI backend, harnessing the power of machine learning models to analyze and process code efficiently.
 ## Features
 * Bash Command Synthesis: Input a description of the task you want to perform in bash, and Appmancer will generate the corresponding command.
